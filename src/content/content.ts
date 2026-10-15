@@ -7,9 +7,9 @@
 
 export const content: Record<string, string> = {
   // Date de contact
-  'contact.phone': '+40 700 000 000',
+  'contact.phone': '+40 752 217 745',
   'contact.email': 'office@evocati-legal.ro',
-  'contact.address': 'București, România',
+  'contact.address': 'Timișoara, Timiș, România',
 
   // General
   'site.title': 'Evocati — Recuperări creanțe comerciale',

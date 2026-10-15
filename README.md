@@ -84,6 +84,7 @@ Then Hosting > **Add custom domain** for your own domain. SSL is automatic.
 
 ```
 src/content/content.ts   all texts
+src/content/legal.ts     Termeni și condiții + Politica de confidențialitate
 src/config.ts            inbox for the contact form
 src/pages/Home.tsx       homepage sections
 src/lib/contact.ts       sends the form to Firestore
