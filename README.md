@@ -1,146 +1,103 @@
-# Evocati — website + admin
+# Evocati
 
-Animated, dark-themed presentation website for **Evocati** (recuperări creanțe
-comerciale) with an admin dashboard. Front-end: **Vite + React + TypeScript +
-Tailwind + Framer Motion**. Back-end: a few **PHP** scripts (no database) that run
-on any cPanel hosting. The default copy comes from
-`BUN VENIT IN CASA DE  RECUPERARI CREANTEI EVOCATI.docx`.
+Presentation site for Evocati, recuperări creanțe comerciale.
+React + Vite + Tailwind, hosted on Firebase. Fully static: no server, no admin panel.
 
----
-
-## Requirements
-
-- Node.js 18+ and npm
-- PHP 8.1+ locally (only for the admin and the contact form in dev)
-
-## Local development
+## Run it
 
 ```bash
 npm install
-npm run dev                  # http://localhost:5173  (admin: /#/admin)
-PORT=8080 npm run dev        # any port (or: npm run dev -- --port 8080)
+npm run dev          # http://localhost:5173
+npm run build        # production files in dist/
 ```
 
-`npm run dev` also starts `php -S` for the API and proxies `/api` to it. Local
-admin data (texts, settings, requests) is kept in `.dev-data/`, never in the build.
-The dev and preview servers listen on all interfaces and accept any hostname.
+Another port? `PORT=8080 npm run dev`
 
-## Build
+## Change a text
+
+Every text on the site lives in **`src/content/content.ts`**.
+
+1. Edit the text.
+2. Commit and push to `main`.
+3. The site is live about a minute later.
+
+Wrap words in stars to make them gold: `'Creanțele nu se recuperează *singure.*'`
+In multi-line texts, each line becomes its own line, list item or paragraph.
+
+## The contact form
+
+"Solicită o analiză" saves the request in Firestore (collection `mail`). The Firebase
+**Trigger Email** extension picks it up and emails it to `CONTACT_FORM_TO` in
+`src/config.ts`. Every request also stays in the Firebase console, even if an email fails.
+
+`firestore.rules` only lets the browser add a message addressed to that one inbox, so
+nobody can use the form to send email anywhere else. Changing the inbox? Update it in
+both `src/config.ts` and `firestore.rules`. The build fails if they don't match.
+
+## Going live (once)
+
+**1. Firebase project**
+- Create a project at [console.firebase.google.com](https://console.firebase.google.com).
+- Switch to the **Blaze** plan (the email extension needs it; normal traffic stays free).
+- **Firestore Database** > Create database > location `eur3 (europe)` > production mode.
+- **Hosting** > Get started (just click through, the deploy does the rest).
+
+**2. Email extension**
+
+Extensions > **Trigger Email from Firestore** > Install:
+
+| Setting | Value |
+|---|---|
+| Firestore location | the one you picked above |
+| SMTP connection URI | `smtps://site@yourdomain.ro@mail.yourdomain.ro:465` |
+| SMTP password | the mailbox password |
+| Email documents collection | `mail` |
+| Default FROM address | `Evocati <site@yourdomain.ro>` |
+
+Use port 465 or 587. Google Cloud blocks port 25.
+
+**3. Let GitHub deploy**
+
+Google Cloud console > IAM > Service accounts > create `github-deployer` with roles
+*Firebase Hosting Admin*, *Firebase Rules Admin*, *Cloud Datastore Viewer* and
+*Service Usage Consumer*. Then Keys > Add key > JSON, and:
 
 ```bash
-npm run build    # type-checks, then outputs the site + API to ./dist
-npm run preview  # serve ./dist locally (with PHP) to test it
+gh secret set FIREBASE_SERVICE_ACCOUNT < key.json
+gh variable set FIREBASE_PROJECT_ID --body your-project-id
+rm key.json
 ```
 
----
+If a deploy ever fails on permissions, give the account *Firebase Admin* instead.
 
-## Deploy to Google Cloud / Firebase (production)
+**4. Ship it**
 
-```
-visitor ──► Firebase Hosting (CDN, custom domain, auto SSL)
-              ├── static site (dist/)
-              └── /api/** ──► Cloud Run "evocati-api" (deploy/api/Dockerfile, PHP 8.3 + Apache)
-                                 └── /data ──► private Cloud Storage bucket (texts, settings, requests)
-```
+Push to `main`, or GitHub > Actions > Deploy > Run workflow.
+Then Hosting > **Add custom domain** for your own domain. SSL is automatic.
 
-Every push to `main` runs `.github/workflows/deploy.yml`: build + checks → API image
-to Artifact Registry → Cloud Run → site to Firebase Hosting. Pull requests only run the
-build and checks. GitHub authenticates to Google with Workload Identity Federation, so
-there are no keys stored anywhere.
+## How deploys work
 
-### One-time setup
+`.github/workflows/deploy.yml` builds the site on every push and pull request. On
+`main` it also deploys `dist/` to Firebase Hosting and `firestore.rules` to Firestore.
 
-1. Create a Google Cloud project, enable billing (**Blaze** plan — needed for the
-   Hosting → Cloud Run rewrite; normal traffic stays in the free tier), then add
-   Firebase to it at console.firebase.google.com.
-2. Install `gcloud` and log in as a project Owner (`gcloud auth login`).
-3. Run:
-   ```bash
-   PROJECT_ID=your-project-id ./deploy/gcp-setup.sh
-   ```
-   It enables the APIs, creates the image registry, the private data bucket (with
-   30-day version history), two least-privilege service accounts, the GitHub ↔ Google
-   trust, and writes the `GCP_*` variables into this GitHub repository.
-4. GitHub → Actions → **Deploy** → *Run workflow*.
-5. Open `https://your-project-id.web.app/#/admin`, log in, set the new password.
-6. Firebase Console → Hosting → **Add custom domain** (SSL is issued automatically).
-
-Region: `europe-west1`. To use another, change it in `firebase.json` too.
-
-Differences from cPanel: HTTPS and certificates are managed by Firebase (the admin's
-Securitate tab shows that instead of the toggle); email must go through **SMTP** on
-port 465 or 587 — Google Cloud blocks port 25 and has no `mail()`.
-
----
-
-## Deploy to cPanel
-
-1. `npm run build`, then zip **the contents** of `dist/` (or use the ready-made
-   `evocati-cpanel.zip`).
-2. cPanel → **File Manager** → `public_html` (or a subfolder) → **Upload** the zip →
-   right-click → **Extract**. Make sure hidden files (`.htaccess`) are extracted:
-   File Manager → Settings → *Show Hidden Files*.
-3. Open `https://domeniu.ro/#/admin`, log in with the initial password and set a
-   new one (required on first login).
-4. In the admin:
-   - **Email** — SMTP account (cPanel → Email Accounts → Connect Devices shows the
-     server, port and username), recipients for the contact form → *Trimite test*.
-   - **Securitate** — run AutoSSL in cPanel (SSL/TLS Status) if the certificate
-     isn't valid yet, then turn on **Forțează HTTPS**.
-   - **Contact** / **Texte site** — phone, email, address and every text on the site.
-
-PHP version: cPanel → *MultiPHP Manager* → 8.1 or newer.
-
-### Updating the site later
-
-Upload a new build over the old one. Everything edited in the admin lives in
-`api/data/`, which the build doesn't contain, so texts, email settings, the admin
-password and received requests are kept. The force-HTTPS setting lives in the root
-`.htaccess`; if you overwrite it, turn the toggle on again in the admin.
-
-### Forgot the admin password
-
-Delete `api/data/admin.php` in File Manager. The initial password works again and
-you'll be asked to set a new one.
-
----
-
-## How it works
+## Project map
 
 ```
-src/
-  App.tsx                 Router: public site + lazy-loaded /admin
-  content/schema.ts       ← EVERY EDITABLE TEXT (key, label, default). Add fields here.
-  content/ContentProvider useContent(): t(key), list(key); *word* → gold highlight
-  pages/Home.tsx          All homepage sections, reading texts via t()
-  admin/                  Dashboard: Texte, Contact, Email, Cereri, Securitate
-  lib/api.ts              fetch wrapper for the PHP API (relative path → works in subfolders)
-deploy/
-  api/Dockerfile          PHP API image for Cloud Run
-  gcp-setup.sh            one-time Google Cloud / Firebase / GitHub setup
-firebase.json             Hosting config (+ /api/** → Cloud Run rewrite)
-.github/workflows/        CI/CD: build, then deploy to Cloud Run + Firebase Hosting
-public/
-  .htaccess               compression, caching, security headers, HTTPS block (admin-managed)
-  api/                    PHP endpoints (copied as-is into dist/api)
-    config.php            initial admin password hash, session timeout
-    lib.php               storage, sessions, CSRF check, rate limits
-    mailer.php            built-in SMTP client (SSL/STARTTLS/AUTH) + mail() fallback
-    content.php           GET public texts / POST save (admin)
-    contact.php           contact form → saved + emailed (honeypot, rate limit)
-    settings.php          email server settings + test email (admin)
-    submissions.php       received requests (admin)
-    ssl.php               certificate status + force-HTTPS toggle (admin)
-    auth.php              login / logout / change password
-    data/                 runtime data, denied by .htaccess AND a PHP guard line
+src/content/content.ts   all texts
+src/config.ts            inbox for the contact form
+src/pages/Home.tsx       homepage sections
+src/lib/contact.ts       sends the form to Firestore
+firestore.rules          what the browser may write
+firebase.json            hosting + rules config
 ```
 
-The PHP code reads these environment variables (all optional; the Docker image sets
-them for Cloud Run): `EVOCATI_PLATFORM` (`cpanel`|`firebase`), `EVOCATI_DATA_DIR`,
-`EVOCATI_SESSION_DIR`, `EVOCATI_SESSION_NAME` (Firebase only forwards `__session`),
-`EVOCATI_TRUST_PROXY=1` (read visitor IP/host from `X-Forwarded-*`), `EVOCATI_HTACCESS`.
+## Testing the form locally
 
-Security notes: admin session cookie is HttpOnly + SameSite=Strict; every write
-needs the `X-Requested-With: evocati` header; login is limited to 5 tries / 15 min
-and the contact form to 5 requests / hour per IP; the SMTP password is never sent
-back to the browser; force-HTTPS refuses to turn on without a valid certificate.
+Copy `.env.example` to `.env.local` and fill in your Firebase web config, or point it
+at the emulator: `npx firebase-tools emulators:start` (needs Java and Node 20+).
+
+## Not on Firebase?
+
+`dist/` is plain static files and runs on any host, including cPanel (`public/.htaccess`
+is included). The contact form still talks to Firebase: set the `VITE_FIREBASE_*`
+values from `.env.example` when building.

@@ -29,12 +29,12 @@ import AnimatedSection from '../components/AnimatedSection'
 import StatCounter from '../components/StatCounter'
 import { Button } from '../components/Button'
 import { useGoToSection } from '../lib/useGoToSection'
-import { rich, useContent } from '../content/ContentProvider'
-import { api } from '../lib/api'
+import { list, rich, t } from '../content/text'
+import { sendContactRequest, type ContactRequest } from '../lib/contact'
 
 // Mobile-first: every section is designed for a ~375px screen, then widened with
 // sm:/lg: breakpoints. Type sizes come from the fluid scale in index.css (.t-*).
-// All copy comes from src/content/schema.ts and can be overridden in the admin.
+// All copy comes from src/content/content.ts.
 
 // Shared stagger variants: a container reveals its children one after another.
 const staggerGroup: Variants = {
@@ -172,7 +172,6 @@ function CheckList({ items, className = '' }: { items: string[]; className?: str
 }
 
 function ShortCta({ n }: { n: number }) {
-  const { t } = useContent()
   const goTo = useGoToSection()
   return (
     <section className="border-y border-gold-500/10 bg-gradient-to-r from-ink-900 via-ink-850 to-ink-900">
@@ -198,7 +197,6 @@ function ShortCta({ n }: { n: number }) {
 
 /* ─────────────────────────────── 1. HERO ─────────────────────────────── */
 function Hero() {
-  const { t, list } = useContent()
   const ref = useRef<HTMLElement>(null)
   const reduce = useReducedMotion()
   const goTo = useGoToSection()
@@ -303,7 +301,6 @@ function Hero() {
 
 /* ─────────────────────────────── 2. IMPACT ─────────────────────────────── */
 function Impact() {
-  const { t, list } = useContent()
   return (
     <section id="impact" className="section scroll-mt-20">
       <div className="container-page grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center lg:gap-12">
@@ -328,7 +325,6 @@ function Impact() {
 
 /* ─────────────────────────────── 3. CINE SUNTEM ─────────────────────────────── */
 function About() {
-  const { t, list } = useContent()
   return (
     <section id="despre" className="section scroll-mt-20 border-y border-white/5 bg-ink-900/40">
       <div className="container-page grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
@@ -367,7 +363,6 @@ function About() {
 
 /* ─────────────────────────────── 4. DE CE EVOCATI ─────────────────────────────── */
 function WhyEvocati() {
-  const { t, list } = useContent()
   return (
     <section className="section">
       <div className="container-page">
@@ -401,7 +396,6 @@ function WhyEvocati() {
 const advantageIcons = [Award, Compass, Handshake, Gauge, Eye, Target]
 
 function Advantages() {
-  const { t, list } = useContent()
   return (
     <section id="avantaje" className="section scroll-mt-20 border-y border-white/5 bg-ink-900/40">
       <div className="container-page">
@@ -430,7 +424,6 @@ function Advantages() {
 
 /* ─────────────────────────────── 6. PROCES ─────────────────────────────── */
 function StepBody({ n }: { n: number }) {
-  const { list } = useContent()
   if (n !== 2) return <Paragraphs items={list(`step.${n}.text`)} />
   return (
     <>
@@ -448,7 +441,6 @@ function StepBody({ n }: { n: number }) {
 // Phones: an accordion (one step open at a time) so the 5 steps don't become a wall of
 // text. From `sm` up every step is expanded and the toggle is inert.
 function Process() {
-  const { t } = useContent()
   const [open, setOpen] = useState(0)
   return (
     <section id="proces" className="section scroll-mt-20">
@@ -508,7 +500,6 @@ function Process() {
 
 /* ─────────────────────────────── 7. TIPURI DE CREANȚE ─────────────────────────────── */
 function ClaimTypes() {
-  const { t, list } = useContent()
   const goTo = useGoToSection()
   return (
     <section id="creante" className="section scroll-mt-20">
@@ -542,7 +533,6 @@ function StatValue({ value }: { value: string }) {
 }
 
 function Numbers() {
-  const { t } = useContent()
   return (
     <section className="border-y border-white/5 bg-ink-900 py-14 sm:py-32">
       <div className="container-page">
@@ -578,7 +568,6 @@ function Numbers() {
 
 /* ─────────────────────────────── 9. NU NE OPRIM LA NOTIFICARE ─────────────────────────────── */
 function BeyondNotice() {
-  const { t, list } = useContent()
   return (
     <section className="section">
       <div className="container-page grid items-center gap-6 lg:grid-cols-2 lg:gap-12">
@@ -600,7 +589,6 @@ function BeyondNotice() {
 
 /* ─────────────────────────────── 10–11. NEGOCIERE ─────────────────────────────── */
 function Negotiation() {
-  const { t, list } = useContent()
   return (
     <section id="negociere" className="section scroll-mt-20 border-y border-white/5 bg-ink-900/40">
       <div className="container-page grid gap-4 sm:gap-8 lg:grid-cols-2">
@@ -638,7 +626,6 @@ function Negotiation() {
 /* ─────────────────────────────── 12–13. ANTREPRENORI / COMPANII MARI ─────────────────────────────── */
 // Phones: a two-tab switch shows one audience at a time. From `sm` up: side by side.
 function Audience() {
-  const { t, list } = useContent()
   const [tab, setTab] = useState<'ent' | 'corp'>('ent')
   const tabs = [
     { id: 'ent' as const, label: t('aud.tab1'), icon: Briefcase },
@@ -692,7 +679,6 @@ function Audience() {
 
 /* ─────────────────────────────── 14–15. CE NE DIFERENȚIAZĂ ─────────────────────────────── */
 function Different() {
-  const { t, list } = useContent()
   return (
     <section className="section">
       <div className="container-page grid gap-8 lg:grid-cols-2 lg:gap-12">
@@ -723,7 +709,6 @@ function Different() {
 
 /* ─────────────────────────────── 16. ECHIPA ─────────────────────────────── */
 function Team() {
-  const { t } = useContent()
   return (
     <section id="echipa" className="section scroll-mt-20 border-y border-white/5 bg-ink-900/40">
       <div className="container-page grid items-center gap-6 lg:grid-cols-2 lg:gap-12">
@@ -750,7 +735,6 @@ function Team() {
 
 /* ─────────────────────────────── 17. CONFIDENȚIALITATE ─────────────────────────────── */
 function Confidentiality() {
-  const { t } = useContent()
   return (
     <section className="section">
       <AnimatedSection className="container-page max-w-3xl sm:text-center">
@@ -771,7 +755,6 @@ function Confidentiality() {
 
 /* ─────────────────────────────── 18. CTA / CONTACT ─────────────────────────────── */
 function Contact() {
-  const { t } = useContent()
   return (
     <section id="contact" className="section scroll-mt-16">
       <div className="container-page">
@@ -799,23 +782,34 @@ const inputCls =
 
 type FormState = { status: 'idle' | 'sending' | 'sent' } | { status: 'error'; message: string }
 
-// Posts to api/contact.php, which stores the request and emails it to the
-// recipients configured in the admin (Email tab).
+// Saved to Firestore and emailed by the Trigger Email extension (see src/lib/contact.ts).
 function ContactForm() {
-  const { t } = useContent()
   const [state, setState] = useState<FormState>({ status: 'idle' })
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const form = e.currentTarget
     const data = Object.fromEntries(new FormData(form)) as Record<string, string>
+    // Bots fill the hidden "website" field; pretend success and drop it.
+    if (data.website) {
+      setState({ status: 'sent' })
+      return
+    }
+    const field = (k: keyof ContactRequest) => (data[k] ?? '').trim()
     setState({ status: 'sending' })
     try {
-      await api('contact.php', data)
+      await sendContactRequest({
+        name: field('name'),
+        company: field('company'),
+        phone: field('phone'),
+        email: field('email'),
+        amount: field('amount'),
+        message: field('message'),
+      })
       form.reset()
       setState({ status: 'sent' })
     } catch (err) {
-      setState({ status: 'error', message: err instanceof Error ? err.message : 'Eroare necunoscută' })
+      setState({ status: 'error', message: err instanceof Error ? err.message : 'eroare necunoscută' })
     }
   }
 

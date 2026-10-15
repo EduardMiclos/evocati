@@ -1,4 +1,0 @@
-# Only public/api/ is copied into the API image; keep the build context small.
-*
-!public/api/
-public/api/data/

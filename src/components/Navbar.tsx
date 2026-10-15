@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Logo from './Logo'
 import { Button } from './Button'
 import { useGoToSection } from '../lib/useGoToSection'
-import { useContent } from '../content/ContentProvider'
+import { t } from '../content/text'
 
 const links = [
   { label: 'Cine suntem', id: 'despre' },
@@ -19,7 +19,6 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const goToSection = useGoToSection()
-  const { t } = useContent()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)

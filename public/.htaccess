@@ -1,4 +1,4 @@
-# Evocati — Apache config for cPanel shared hosting.
+# Apache config, only used if the site is hosted on cPanel instead of Firebase.
 # Every block is wrapped in <IfModule>, so a missing module is skipped instead
 # of causing a 500 error.
 
@@ -6,16 +6,12 @@ Options -Indexes
 DirectoryIndex index.html
 
 # ── Force HTTPS ──────────────────────────────────────────────────────────────
-# Toggled from the admin dashboard (Securitate → Forțează HTTPS), which only turns
-# it on once the domain has a valid SSL certificate. Don't edit between the markers.
-# BEGIN Evocati HTTPS (managed from the admin dashboard → Securitate)
+# Uncomment once the domain has an SSL certificate (cPanel → SSL/TLS Status → AutoSSL).
 # <IfModule mod_rewrite.c>
 #   RewriteEngine On
 #   RewriteCond %{HTTPS} !=on
-#   RewriteCond %{HTTP:X-Forwarded-Proto} !https
 #   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # </IfModule>
-# END Evocati HTTPS
 
 # ── Compression ──────────────────────────────────────────────────────────────
 <IfModule mod_deflate.c>

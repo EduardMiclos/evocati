@@ -2,10 +2,9 @@ import { Link } from 'react-router-dom'
 import { Mail, MapPin, Phone } from 'lucide-react'
 import Logo from './Logo'
 import { useGoToSection } from '../lib/useGoToSection'
-import { useContent } from '../content/ContentProvider'
+import { list, t } from '../content/text'
 
 export default function Footer() {
-  const { t, list } = useContent()
   const goTo = useGoToSection()
   const linkCls = 'text-left hover:text-gold-300'
   const phone = t('contact.phone')

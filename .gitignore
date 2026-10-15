@@ -4,20 +4,16 @@ dist
 *.tsbuildinfo
 *.zip
 
-# Old build copy (pre-admin), not part of the source
+# Old build copy, not part of the source
 www/
-
-# Local admin data from `npm run dev` (texts, settings, requests)
-.dev-data/
-public/api/data/*
-!public/api/data/.htaccess
 
 # Firebase CLI
 .firebase/
-firebase-debug.log*
+*-debug.log*
 
 # Editors / OS
 .DS_Store
 *.local
+.env
 .vscode/*
 !.vscode/extensions.json
