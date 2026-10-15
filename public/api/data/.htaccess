@@ -1,0 +1,9 @@
+# Runtime data (texts, email settings, admin password hash, requests). Never served.
+# Each file also starts with a PHP guard line, so it stays private even without this.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

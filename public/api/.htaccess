@@ -1,0 +1,15 @@
+# Only the endpoint scripts are reachable; helper files are blocked.
+<FilesMatch "^(lib|config|mailer)\.php$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# API responses are never cached.
+<IfModule mod_headers.c>
+  Header set Cache-Control "no-store"
+</IfModule>

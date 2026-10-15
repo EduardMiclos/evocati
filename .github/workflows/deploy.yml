@@ -1,0 +1,98 @@
+# Production deploy: push to main → build → PHP API to Cloud Run → site to Firebase Hosting.
+#
+# One-time setup: run deploy/gcp-setup.sh, which creates the Google Cloud resources and
+# sets the repository variables used below (no keys are stored in GitHub — the workflow
+# authenticates with Workload Identity Federation).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+  SERVICE: evocati-api
+  IMAGE: ${{ vars.GCP_REGION || 'europe-west1' }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/evocati/evocati-api:${{ github.sha }}
+
+jobs:
+  build:
+    name: Build & check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: PHP syntax check
+        run: for f in public/api/*.php; do php -l "$f"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  deploy-api:
+    name: Deploy API (Cloud Run)
+    needs: build
+    # Runs only on main, and only once deploy/gcp-setup.sh has set the variables.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.GCP_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+      - run: docker build -f deploy/api/Dockerfile -t "$IMAGE" .
+      - run: docker push "$IMAGE"
+      - name: Deploy to Cloud Run
+        # max-instances=1: the admin data is JSON files on the bucket, so a single writer
+        # keeps them consistent. Traffic is tiny (only /api calls hit Cloud Run).
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE" \
+            --region "$REGION" \
+            --service-account "${{ vars.GCP_RUNTIME_SA }}" \
+            --allow-unauthenticated \
+            --execution-environment gen2 \
+            --min-instances 0 \
+            --max-instances 1 \
+            --memory 512Mi \
+            --add-volume "name=data,type=cloud-storage,bucket=${{ vars.GCP_DATA_BUCKET }},mount-options=uid=33;gid=33" \
+            --add-volume-mount "volume=data,mount-path=/data" \
+            --quiet
+
+  deploy-hosting:
+    name: Deploy site (Firebase Hosting)
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+          create_credentials_file: true
+      - run: npx --yes firebase-tools@13.29.1 deploy --only hosting --project "$PROJECT_ID" --non-interactive

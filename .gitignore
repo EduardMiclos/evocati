@@ -1,0 +1,23 @@
+# Dependencies & builds
+node_modules
+dist
+*.tsbuildinfo
+*.zip
+
+# Old build copy (pre-admin), not part of the source
+www/
+
+# Local admin data from `npm run dev` (texts, settings, requests)
+.dev-data/
+public/api/data/*
+!public/api/data/.htaccess
+
+# Firebase CLI
+.firebase/
+firebase-debug.log*
+
+# Editors / OS
+.DS_Store
+*.local
+.vscode/*
+!.vscode/extensions.json

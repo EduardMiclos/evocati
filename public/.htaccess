@@ -1,0 +1,53 @@
+# Evocati — Apache config for cPanel shared hosting.
+# Every block is wrapped in <IfModule>, so a missing module is skipped instead
+# of causing a 500 error.
+
+Options -Indexes
+DirectoryIndex index.html
+
+# ── Force HTTPS ──────────────────────────────────────────────────────────────
+# Toggled from the admin dashboard (Securitate → Forțează HTTPS), which only turns
+# it on once the domain has a valid SSL certificate. Don't edit between the markers.
+# BEGIN Evocati HTTPS (managed from the admin dashboard → Securitate)
+# <IfModule mod_rewrite.c>
+#   RewriteEngine On
+#   RewriteCond %{HTTPS} !=on
+#   RewriteCond %{HTTP:X-Forwarded-Proto} !https
+#   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>
+# END Evocati HTTPS
+
+# ── Compression ──────────────────────────────────────────────────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript text/javascript image/svg+xml application/json
+</IfModule>
+
+# ── Caching ──────────────────────────────────────────────────────────────────
+# Files in assets/ have a content hash in their name, so they can be cached
+# forever. index.html must always be re-checked so new deploys show up.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|woff2?|svg|png|jpe?g|webp)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+
+  # ── Security headers ───────────────────────────────────────────────────────
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# ── Clean URLs (optional) ────────────────────────────────────────────────────
+# The site uses HashRouter (/#/termeni), which needs no rewrites. Only if you
+# switch to BrowserRouter in src/App.tsx, uncomment this block (and set
+# RewriteBase to the subfolder, e.g. /evocati/, if not at the domain root).
+# <IfModule mod_rewrite.c>
+#   RewriteEngine On
+#   RewriteBase /
+#   RewriteRule ^index\.html$ - [L]
+#   RewriteCond %{REQUEST_FILENAME} !-f
+#   RewriteCond %{REQUEST_FILENAME} !-d
+#   RewriteRule . /index.html [L]
+# </IfModule>
