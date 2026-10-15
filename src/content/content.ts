@@ -8,7 +8,7 @@
 export const content: Record<string, string> = {
   // Date de contact
   'contact.phone': '+40 700 000 000',
-  'contact.email': 'contact@evocati-legal.ro',
+  'contact.email': 'office@evocati-legal.ro',
   'contact.address': 'București, România',
 
   // General

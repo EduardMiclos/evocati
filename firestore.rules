@@ -28,7 +28,7 @@ service cloud.firestore {
       return d.keys().hasAll(['to', 'message', 'form', 'createdAt'])
         && d.keys().hasOnly(['to', 'replyTo', 'message', 'form', 'createdAt'])
         // Must match CONTACT_FORM_TO in src/config.ts.
-        && d.to == 'contact@evocati-legal.ro'
+        && d.to == 'office@evocati-legal.ro'
         && d.createdAt == request.time
         && (!('replyTo' in d) || str(d.replyTo, 160))
         && d.message.keys().hasOnly(['subject', 'text'])
