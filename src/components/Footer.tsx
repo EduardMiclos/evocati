@@ -13,7 +13,7 @@ export default function Footer() {
     <footer className="relative border-t border-white/5 bg-ink-900">
       <div className="container-page grid grid-cols-2 gap-x-6 gap-y-10 py-14 md:grid-cols-4">
         <div className="col-span-2 md:col-span-1">
-          <Logo />
+          <Logo className="h-12" />
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-400">
             {list('footer.tagline').map((l, i) => (
               <span key={i} className="block">
