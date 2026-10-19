@@ -17,3 +17,10 @@ www/
 .env
 .vscode/*
 !.vscode/extensions.json
+
+# Service account keys and other stray JSON in the root: never commit
+/*.json
+!/package.json
+!/package-lock.json
+!/tsconfig.json
+!/firebase.json
