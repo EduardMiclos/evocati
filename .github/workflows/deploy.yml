@@ -1,5 +1,5 @@
-# Push to main → build → Firebase Hosting + Firestore rules.
-# Pull requests only build and check. Setup: see README ("Going live").
+# Push to main → build → Firebase Hosting (+ Firestore rules once enabled, see below).
+# Pull requests only build and check. Needs secret FIREBASE_SERVICE_ACCOUNT + variable FIREBASE_PROJECT_ID.
 name: Deploy
 
 on:
@@ -43,7 +43,7 @@ jobs:
   deploy:
     name: Deploy to Firebase
     needs: build
-    # Waits until the FIREBASE_PROJECT_ID variable is set (see README).
+    # Waits until the FIREBASE_PROJECT_ID variable is set.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.FIREBASE_PROJECT_ID != ''
     runs-on: ubuntu-24.04
     environment: production
@@ -53,8 +53,20 @@ jobs:
         with:
           name: dist
           path: dist
+      - name: Deploy site to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: ${{ vars.FIREBASE_PROJECT_ID }}
+      # Off until the deploy account may manage Firestore (roles: Firebase Rules Admin,
+      # Service Usage Consumer). Then set the repo variable DEPLOY_FIRESTORE_RULES=true.
       - uses: google-github-actions/auth@v3
+        if: vars.DEPLOY_FIRESTORE_RULES == 'true'
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           create_credentials_file: true
-      - run: npx --yes firebase-tools@15.32.1 deploy --only hosting,firestore:rules --project "${{ vars.FIREBASE_PROJECT_ID }}" --non-interactive
+      - name: Deploy Firestore rules
+        if: vars.DEPLOY_FIRESTORE_RULES == 'true'
+        run: npx --yes firebase-tools@15.32.1 deploy --only firestore:rules --project "${{ vars.FIREBASE_PROJECT_ID }}" --non-interactive
