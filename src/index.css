@@ -123,6 +123,11 @@ body {
   }
 }
 
+/* reCAPTCHA v3 badge: hidden, the contact form shows Google's required notice instead. */
+.grecaptcha-badge {
+  visibility: hidden;
+}
+
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -30,7 +30,7 @@ import StatCounter from '../components/StatCounter'
 import { Button } from '../components/Button'
 import { useGoToSection } from '../lib/useGoToSection'
 import { list, rich, t } from '../content/text'
-import { sendContactRequest, type ContactRequest } from '../lib/contact'
+import { preloadRecaptcha, sendContactRequest, type ContactRequest } from '../lib/contact'
 
 // Mobile-first: every section is designed for a ~375px screen, then widened with
 // sm:/lg: breakpoints. Type sizes come from the fluid scale in index.css (.t-*).
@@ -782,7 +782,7 @@ const inputCls =
 
 type FormState = { status: 'idle' | 'sending' | 'sent' } | { status: 'error'; message: string }
 
-// Saved to Firestore and emailed by the Trigger Email extension (see src/lib/contact.ts).
+// Sent to the contactForm Cloud Function, which emails office@ (see src/lib/contact.ts).
 function ContactForm() {
   const [state, setState] = useState<FormState>({ status: 'idle' })
 
@@ -799,7 +799,8 @@ function ContactForm() {
     setState({ status: 'sending' })
     try {
       await sendContactRequest({
-        name: field('name'),
+        lastName: field('lastName'),
+        firstName: field('firstName'),
         company: field('company'),
         phone: field('phone'),
         email: field('email'),
@@ -814,24 +815,39 @@ function ContactForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2.5 sm:space-y-3">
+    <form onSubmit={onSubmit} onFocus={preloadRecaptcha} className="space-y-2.5 sm:space-y-3">
       {/* Honeypot: hidden from people, bots fill it in and get dropped server-side. */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
-      <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-        <input required name="name" maxLength={120} placeholder="Nume și prenume" autoComplete="name" className={inputCls} />
-        <input name="company" maxLength={160} placeholder="Companie" autoComplete="organization" className={inputCls} />
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+        <input required name="lastName" maxLength={80} placeholder="Nume" autoComplete="family-name" className={inputCls} />
+        <input required name="firstName" maxLength={80} placeholder="Prenume" autoComplete="given-name" className={inputCls} />
       </div>
       <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
         <input required name="phone" type="tel" maxLength={40} placeholder="Telefon" autoComplete="tel" className={inputCls} />
-        <input name="email" type="email" maxLength={160} placeholder="Email" autoComplete="email" className={inputCls} />
+        <input required name="email" type="email" maxLength={160} placeholder="Email" autoComplete="email" className={inputCls} />
       </div>
-      <input name="amount" maxLength={60} placeholder="Valoarea creanței (lei)" inputMode="numeric" className={inputCls} />
+      <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
+        <input name="company" maxLength={160} placeholder="Companie" autoComplete="organization" className={inputCls} />
+        <input name="amount" maxLength={60} placeholder="Valoarea creanței (lei)" inputMode="numeric" className={inputCls} />
+      </div>
       <textarea name="message" rows={3} maxLength={4000} placeholder="Descrie pe scurt situația" className={inputCls} />
       <Button type="submit" variant="primary" className="w-full" disabled={state.status === 'sending'}>
         {state.status === 'sending' ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}{' '}
         {t('cs.button')}
       </Button>
       {state.status === 'sent' && <p className="text-center text-sm text-emerald-400">{t('cs.success')}</p>}
+      {/* The reCAPTCHA badge is hidden (index.css); Google then requires this notice. */}
+      <p className="text-center text-[11px] leading-snug text-slate-500">
+        Protejat de reCAPTCHA. Se aplică{' '}
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline hover:text-slate-300">
+          Politica de confidențialitate
+        </a>{' '}
+        și{' '}
+        <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" className="underline hover:text-slate-300">
+          Termenii
+        </a>{' '}
+        Google.
+      </p>
       {state.status === 'error' && (
         <p className="text-center text-sm text-red-400">
           Mesajul nu a putut fi trimis: {state.message}. Ne poți suna la {t('contact.phone')}.

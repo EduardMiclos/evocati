@@ -1,7 +1,12 @@
-import { CONTACT_FORM_TO } from '../config'
+// "Solicită o analiză" → the contactForm Cloud Function (same as the old site), which
+// checks the reCAPTCHA token and emails office@evocati-legal.ro.
+const ENDPOINT = 'https://europe-west1-evocati-website.cloudfunctions.net/contactForm'
+// Public site key (reCAPTCHA v3); the secret half lives in the Cloud Function.
+const RECAPTCHA_SITE_KEY = '6LeqXw4sAAAAAMLk43p7DgeuK4cgFNGexG9TwHjF'
 
 export interface ContactRequest {
-  name: string
+  lastName: string
+  firstName: string
   company: string
   phone: string
   email: string
@@ -9,54 +14,63 @@ export interface ContactRequest {
   message: string
 }
 
-// On Firebase Hosting the project's web config is served at this reserved URL, so the
-// build needs no keys. VITE_FIREBASE_* (in .env.local) override it for local testing.
-async function firebaseConfig() {
-  const env = import.meta.env
-  if (env.VITE_FIREBASE_PROJECT_ID) {
-    return { apiKey: env.VITE_FIREBASE_API_KEY, projectId: env.VITE_FIREBASE_PROJECT_ID, appId: env.VITE_FIREBASE_APP_ID }
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready(cb: () => void): void
+      execute(siteKey: string, options: { action: string }): Promise<string>
+    }
   }
-  const res = await fetch('/__/firebase/init.json')
-  if (!res.ok) throw new Error('formularul nu este configurat pe acest server')
-  return res.json()
 }
 
-let emulatorConnected = false
+let recaptcha: Promise<void> | null = null
 
-// Adds a document to the `mail` collection; the Firebase "Trigger Email" extension
-// sends it to CONTACT_FORM_TO. Firebase is loaded only when a form is actually sent.
-export async function sendContactRequest(form: ContactRequest): Promise<void> {
-  const [{ getApps, initializeApp }, fs] = await Promise.all([
-    import('firebase/app'),
-    import('firebase/firestore/lite'),
-  ])
-  const app = getApps()[0] ?? initializeApp(await firebaseConfig())
-  const db = fs.getFirestore(app)
-  const emulator = import.meta.env.VITE_FIRESTORE_EMULATOR
-  if (emulator && !emulatorConnected) {
-    const [host, port] = emulator.split(':')
-    fs.connectFirestoreEmulator(db, host, Number(port))
-    emulatorConnected = true
-  }
-
-  const text = [
-    'Cerere nouă din formularul „Solicită o analiză”',
-    '',
-    `Nume:      ${form.name}`,
-    `Companie:  ${form.company}`,
-    `Telefon:   ${form.phone}`,
-    `Email:     ${form.email}`,
-    `Valoare:   ${form.amount}`,
-    '',
-    'Situația:',
-    form.message,
-  ].join('\n')
-
-  await fs.addDoc(fs.collection(db, 'mail'), {
-    to: CONTACT_FORM_TO,
-    ...(form.email ? { replyTo: form.email } : {}),
-    message: { subject: `Cerere nouă de analiză: ${form.name}`, text },
-    form,
-    createdAt: fs.serverTimestamp(),
+// The reCAPTCHA script is only loaded once someone starts filling in the form.
+function loadRecaptcha(): Promise<void> {
+  recaptcha ??= new Promise((resolve, reject) => {
+    const s = document.createElement('script')
+    s.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`
+    s.async = true
+    s.onload = () => window.grecaptcha?.ready(resolve)
+    s.onerror = () => {
+      recaptcha = null
+      reject(new Error('protecția anti-spam nu s-a putut încărca'))
+    }
+    document.head.appendChild(s)
   })
+  return recaptcha
+}
+
+export function preloadRecaptcha() {
+  loadRecaptcha().catch(() => undefined)
+}
+
+export async function sendContactRequest(form: ContactRequest): Promise<void> {
+  await loadRecaptcha()
+  const recaptchaToken = await window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action: 'submit' })
+
+  // The function emails only these fields, so company and amount go at the top of the message.
+  const details = [
+    form.company && `Companie: ${form.company}`,
+    form.amount && `Valoarea creanței: ${form.amount}`,
+  ].filter(Boolean)
+  const message = [...details, ...(details.length && form.message ? [''] : []), form.message].join('\n').trim()
+
+  const res = await fetch(ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      lastName: form.lastName,
+      firstName: form.firstName,
+      email: form.email,
+      phone: form.phone,
+      message: message || '(fără mesaj)',
+      recaptchaToken,
+    }),
+  })
+  const reply = await res.text()
+  // The function answers "Sended" on success (same contract as the old site).
+  if (!res.ok || !reply.includes('Sended')) {
+    throw new Error(res.ok ? 'serverul nu a confirmat trimiterea' : `eroare server (${res.status})`)
+  }
 }

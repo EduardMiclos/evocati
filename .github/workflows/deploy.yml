@@ -1,4 +1,4 @@
-# Push to main → build → Firebase Hosting (+ Firestore rules once enabled, see below).
+# Push to main → build → Firebase Hosting.
 # Pull requests only build and check. Needs secret FIREBASE_SERVICE_ACCOUNT + variable FIREBASE_PROJECT_ID.
 name: Deploy
 
@@ -27,13 +27,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Contact form recipient matches firestore.rules
-        run: |
-          to=$(grep -oP "CONTACT_FORM_TO = '\K[^']+" src/config.ts)
-          grep -qF "d.to == '$to'" firestore.rules || {
-            echo "::error file=firestore.rules::Allow '$to' (CONTACT_FORM_TO in src/config.ts) in firestore.rules"
-            exit 1
-          }
       - uses: actions/upload-artifact@v7
         with:
           name: dist
@@ -60,13 +53,3 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: ${{ vars.FIREBASE_PROJECT_ID }}
-      # Off until the deploy account may manage Firestore (roles: Firebase Rules Admin,
-      # Service Usage Consumer). Then set the repo variable DEPLOY_FIRESTORE_RULES=true.
-      - uses: google-github-actions/auth@v3
-        if: vars.DEPLOY_FIRESTORE_RULES == 'true'
-        with:
-          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          create_credentials_file: true
-      - name: Deploy Firestore rules
-        if: vars.DEPLOY_FIRESTORE_RULES == 'true'
-        run: npx --yes firebase-tools@15.32.1 deploy --only firestore:rules --project "${{ vars.FIREBASE_PROJECT_ID }}" --non-interactive
