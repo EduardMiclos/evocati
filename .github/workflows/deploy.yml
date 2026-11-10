@@ -53,3 +53,6 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: ${{ vars.FIREBASE_PROJECT_ID }}
+          # Pinned: 15.35+ also checks serviceusage (is the Hosting API enabled?),
+          # which the Hosting-only deploy account isn't allowed to read.
+          firebaseToolsVersion: 15.34.0
